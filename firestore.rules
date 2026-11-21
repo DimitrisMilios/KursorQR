@@ -1,0 +1,144 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner() {
+      return isSignedIn() && resource.data.ownerId == request.auth.uid;
+    }
+
+    function isValidRequiredUrl(val) {
+      return val is string
+        && val.size() >= 8
+        && val.size() <= 2048
+        && val.matches('^https?://.+');
+    }
+
+    function isValidOptionalUrl(val) {
+      return val is string
+        && val.size() <= 2048
+        && (val == '' || val.matches('^(https?://|itms-apps://|market://).+'));
+    }
+
+    // Validates a brand-new QR link created by any authenticated KursorQR user.
+    // Enforces ownership, clean schema, length caps (Spark storage safety), and 0 initial counts.
+    function isValidCreate() {
+      let data = request.resource.data;
+      let allowedKeys = [
+        'ownerId',
+        'title',
+        'webUrl',
+        'iosUrl',
+        'androidUrl',
+        'isActive',
+        'totalScans',
+        'iosScans',
+        'androidScans',
+        'createdAt',
+        'updatedAt'
+      ];
+
+      return isSignedIn()
+        && data.keys().hasOnly(allowedKeys)
+        && data.keys().hasAll([
+          'ownerId',
+          'title',
+          'webUrl',
+          'iosUrl',
+          'androidUrl',
+          'isActive',
+          'totalScans',
+          'iosScans',
+          'androidScans'
+        ])
+        && data.ownerId == request.auth.uid
+        && data.title is string
+        && data.title.size() >= 1
+        && data.title.size() <= 120
+        && isValidRequiredUrl(data.webUrl)
+        && isValidOptionalUrl(data.iosUrl)
+        && isValidOptionalUrl(data.androidUrl)
+        && data.isActive is bool
+        && data.totalScans == 0
+        && data.iosScans == 0
+        && data.androidScans == 0;
+    }
+
+    // Validates edits by the document owner (cannot transfer ownerId or modify scan counters).
+    function isValidOwnerUpdate() {
+      let data = request.resource.data;
+      let affected = data.diff(resource.data).affectedKeys();
+      let editableKeys = [
+        'title',
+        'webUrl',
+        'iosUrl',
+        'androidUrl',
+        'isActive',
+        'updatedAt'
+      ];
+
+      return isOwner()
+        && affected.hasOnly(editableKeys)
+        && data.ownerId == resource.data.ownerId
+        && data.title is string
+        && data.title.size() >= 1
+        && data.title.size() <= 120
+        && isValidRequiredUrl(data.webUrl)
+        && isValidOptionalUrl(data.iosUrl)
+        && isValidOptionalUrl(data.androidUrl)
+        && data.isActive is bool;
+    }
+
+    // Allows anonymous, 100% GDPR-compliant +1 scan counter increments from /r.html ONLY.
+    function isValidAnonymousScanIncrement() {
+      let affected = request.resource.data.diff(resource.data).affectedKeys();
+      let allowedKeys = ['totalScans', 'iosScans', 'androidScans'];
+
+      let prevTotal = resource.data.get('totalScans', 0);
+      let prevIos = resource.data.get('iosScans', 0);
+      let prevAndroid = resource.data.get('androidScans', 0);
+
+      let nextTotal = request.resource.data.get('totalScans', 0);
+      let nextIos = request.resource.data.get('iosScans', 0);
+      let nextAndroid = request.resource.data.get('androidScans', 0);
+
+      let iosDiff = nextIos - prevIos;
+      let androidDiff = nextAndroid - prevAndroid;
+
+      return affected.hasOnly(allowedKeys)
+        && affected.hasAll(['totalScans'])
+        && prevTotal is int && nextTotal is int
+        && prevIos is int && nextIos is int
+        && prevAndroid is int && nextAndroid is int
+        && nextTotal == prevTotal + 1
+        && (iosDiff == 0 || iosDiff == 1)
+        && (androidDiff == 0 || androidDiff == 1)
+        && (iosDiff + androidDiff) <= 1;
+    }
+
+    match /qr_links/{slug} {
+      // Public single-document GET so /r/<slug> redirects work anonymously with zero cookies.
+      allow get: if true;
+
+      // Signed-in users can ONLY list their own QR links (`where('ownerId', isEqualTo: uid)`).
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+
+      // Any signed-in user can claim an unused, URL-safe slug (1-64 chars).
+      allow create: if slug.matches('^[a-z0-9][a-z0-9_-]{0,63}$') && isValidCreate();
+
+      // Updates allowed either for the link owner editing destinations OR anonymous +1 scan counters.
+      allow update: if isValidOwnerUpdate() || isValidAnonymousScanIncrement();
+
+      // Only the link owner can delete their QR link.
+      allow delete: if isOwner();
+    }
+
+    // Deny access to any other collections by default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
