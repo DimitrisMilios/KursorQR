@@ -1,0 +1,169 @@
+name: Production Release (SemVer Bump & Firebase Deploy)
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: production-release-main
+  cancel-in-progress: false
+
+jobs:
+  release-and-deploy:
+    name: Bump Version, Build & Deploy to Firebase Production
+    runs-on: ubuntu-latest
+    # Prevent infinite loops from the release version-bump commit or explicit [skip ci] merges
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+
+    steps:
+      - name: Checkout repository (full history for SemVer)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate redirect engine (r.html syntax & <15KB budget)
+        run: |
+          node -e "
+            const fs = require('fs');
+            const html = fs.readFileSync('app/web/r.html', 'utf8');
+            const bytes = Buffer.byteLength(html, 'utf8');
+            if (bytes > 15360) throw new Error('r.html exceeds 15KB: ' + bytes);
+            const match = html.match(/<script>([\s\S]*?)<\/script>/);
+            if (!match) throw new Error('Missing inline script in r.html');
+            new Function(match[1]);
+          "
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies, analyze & test
+        working-directory: app
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test
+
+      - name: Compute next SemVer & bump app/pubspec.yaml
+        id: bump
+        run: |
+          node -e '
+            const fs = require("fs");
+            const { execSync } = require("child_process");
+
+            const pubspecPath = "app/pubspec.yaml";
+            const content = fs.readFileSync(pubspecPath, "utf8");
+            const match = content.match(/^version:\s*(\d+)\.(\d+)\.(\d+)\+(\d+)\s*$/m);
+            if (!match) {
+              throw new Error("Could not parse version: X.Y.Z+B in app/pubspec.yaml");
+            }
+
+            let major = parseInt(match[1], 10);
+            let minor = parseInt(match[2], 10);
+            let patch = parseInt(match[3], 10);
+            const build = parseInt(match[4], 10) + 1;
+
+            let range = "HEAD~1..HEAD";
+            try {
+              const lastTag = execSync("git describe --tags --abbrev=0 --match \"v*\"", {
+                stdio: ["ignore", "pipe", "ignore"]
+              }).toString().trim();
+              if (lastTag) range = `${lastTag}..HEAD`;
+            } catch (_) {
+              // No prior v* tag found; inspect the latest merge/commit
+            }
+
+            let messages = "";
+            try {
+              messages = execSync(`git log ${range} --pretty=format:%s%n%b`, {
+                stdio: ["ignore", "pipe", "ignore"]
+              }).toString();
+            } catch (_) {
+              messages = execSync("git log -1 --pretty=format:%s%n%b").toString();
+            }
+
+            const lines = messages.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+            const isBreaking = lines.some(l =>
+              l.includes("BREAKING CHANGE") || /^[a-z]+(\([^)]+\))?!:/.test(l)
+            );
+            const isFeat = lines.some(l => /^feat(\([^)]+\))?:/.test(l));
+
+            if (isBreaking) {
+              major += 1;
+              minor = 0;
+              patch = 0;
+            } else if (isFeat) {
+              minor += 1;
+              patch = 0;
+            } else {
+              patch += 1;
+            }
+
+            const semver = `${major}.${minor}.${patch}`;
+            const fullVersion = `${semver}+${build}`;
+            const updated = content.replace(
+              /^version:\s*\d+\.\d+\.\d+\+\d+\s*$/m,
+              `version: ${fullVersion}`
+            );
+            fs.writeFileSync(pubspecPath, updated, "utf8");
+
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `semver=${semver}\n`);
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `build=${build}\n`);
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `full_version=${fullVersion}\n`);
+            console.log(`Bumped app/pubspec.yaml version to ${fullVersion}`);
+          '
+
+      - name: Build Flutter Web production bundle
+        working-directory: app
+        run: |
+          flutter build web --release \
+            --build-name=${{ steps.bump.outputs.semver }} \
+            --build-number=${{ steps.bump.outputs.build }}
+
+      - name: Verify Firebase Service Account secret is configured
+        env:
+          SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KURSORQR }}
+        run: |
+          if [ -z "$SA_JSON" ]; then
+            echo "::error::Missing repository secret FIREBASE_SERVICE_ACCOUNT_KURSORQR. Add your Firebase service account JSON in GitHub Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+
+      - name: Deploy Hosting & Firestore Rules to Firebase (kursorqr)
+        env:
+          SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KURSORQR }}
+        run: |
+          echo "$SA_JSON" > "$RUNNER_TEMP/firebase-sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-sa.json"
+          npx --yes firebase-tools deploy \
+            --only hosting,firestore:rules \
+            --project kursorqr \
+            --non-interactive
+
+      - name: Clean up temporary credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/firebase-sa.json"
+
+      - name: Commit bumped version, push tag & publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add app/pubspec.yaml
+          git commit -m "chore(release): v${{ steps.bump.outputs.full_version }} [skip ci]"
+          git tag "v${{ steps.bump.outputs.semver }}"
+          git push origin main
+          git push origin "v${{ steps.bump.outputs.semver }}"
+
+          gh release create "v${{ steps.bump.outputs.semver }}" \
+            --title "KursorQR v${{ steps.bump.outputs.semver }}" \
+            --generate-notes

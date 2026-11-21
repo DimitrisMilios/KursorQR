@@ -6,8 +6,22 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Google Sign-In sets email_verified=true automatically; Email/Password users
+    // must verify their email to prevent throwaway bot spam on the free Spark tier.
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
     function isOwner() {
       return isSignedIn() && resource.data.ownerId == request.auth.uid;
+    }
+
+    function userPath(uid) {
+      return /databases/$(database)/documents/users/$(uid);
+    }
+
+    function linkPath(slug) {
+      return /databases/$(database)/documents/qr_links/$(slug);
     }
 
     function isValidRequiredUrl(val) {
@@ -23,9 +37,29 @@ service cloud.firestore {
         && (val == '' || val.matches('^(https?://|itms-apps://|market://).+'));
     }
 
-    // Validates a brand-new QR link created by any authenticated KursorQR user.
-    // Enforces ownership, clean schema, length caps (Spark storage safety), and 0 initial counts.
-    function isValidCreate() {
+    function isValidDesignMap(d) {
+      return d is map
+        && d.keys().hasOnly([
+          'useGradient',
+          'fgColor',
+          'fgColorEnd',
+          'gradientDirection',
+          'bgColor',
+          'style',
+          'iconId',
+          'errorLevel'
+        ])
+        && (!('useGradient' in d) || d.useGradient is bool)
+        && (!('fgColor' in d) || d.fgColor is int)
+        && (!('fgColorEnd' in d) || d.fgColorEnd is int)
+        && (!('bgColor' in d) || d.bgColor is int)
+        && (!('gradientDirection' in d) || d.gradientDirection in ['horizontal', 'vertical', 'diagonalDown', 'diagonalUp'])
+        && (!('style' in d) || d.style in ['smooth', 'dots', 'squares'])
+        && (!('iconId' in d) || (d.iconId is string && d.iconId.size() <= 32))
+        && (!('errorLevel' in d) || d.errorLevel in [0, 1, 2, 3]);
+    }
+
+    function isValidQrCreateData() {
       let data = request.resource.data;
       let allowedKeys = [
         'ownerId',
@@ -37,12 +71,12 @@ service cloud.firestore {
         'totalScans',
         'iosScans',
         'androidScans',
+        'design',
         'createdAt',
         'updatedAt'
       ];
 
-      return isSignedIn()
-        && data.keys().hasOnly(allowedKeys)
+      return data.keys().hasOnly(allowedKeys)
         && data.keys().hasAll([
           'ownerId',
           'title',
@@ -64,10 +98,29 @@ service cloud.firestore {
         && data.isActive is bool
         && data.totalScans == 0
         && data.iosScans == 0
-        && data.androidScans == 0;
+        && data.androidScans == 0
+        && (!('design' in data) || isValidDesignMap(data.design));
     }
 
-    // Validates edits by the document owner (cannot transfer ownerId or modify scan counters).
+    // Verifies the atomic WriteBatch also registered this slug in users/{uid}.qrSlugs
+    // and that total active QR codes for the user does not exceed 10.
+    function isQuotaBatchValidOnCreate(slug) {
+      let uid = request.auth.uid;
+      let uPath = userPath(uid);
+      let afterSlugs = getAfter(uPath).data.qrSlugs;
+
+      return existsAfter(uPath)
+        && afterSlugs is list
+        && afterSlugs.size() <= 10
+        && (slug in afterSlugs)
+        && (
+          exists(uPath)
+            ? (!(slug in get(uPath).data.qrSlugs)
+                && afterSlugs.size() == get(uPath).data.qrSlugs.size() + 1)
+            : (afterSlugs.size() == 1 && afterSlugs[0] == slug)
+        );
+    }
+
     function isValidOwnerUpdate() {
       let data = request.resource.data;
       let affected = data.diff(resource.data).affectedKeys();
@@ -77,6 +130,7 @@ service cloud.firestore {
         'iosUrl',
         'androidUrl',
         'isActive',
+        'design',
         'updatedAt'
       ];
 
@@ -89,7 +143,8 @@ service cloud.firestore {
         && isValidRequiredUrl(data.webUrl)
         && isValidOptionalUrl(data.iosUrl)
         && isValidOptionalUrl(data.androidUrl)
-        && data.isActive is bool;
+        && data.isActive is bool
+        && (!('design' in data) || isValidDesignMap(data.design));
     }
 
     // Allows anonymous, 100% GDPR-compliant +1 scan counter increments from /r.html ONLY.
@@ -119,6 +174,67 @@ service cloud.firestore {
         && (iosDiff + androidDiff) <= 1;
     }
 
+    // =========================================================================
+    // USER QUOTA LEDGER (`users/{uid}`) — Unbypassable Max 10 QR Codes / Account
+    // Stores ONLY opaque slug IDs (zero PII) so quota is enforced server-side
+    // on the $0 Spark Plan without Cloud Functions.
+    // =========================================================================
+    match /users/{uid} {
+      allow get: if isSignedIn() && request.auth.uid == uid;
+      allow list: if false;
+
+      allow create: if isVerifiedUser()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['qrSlugs', 'lastMutatedSlug', 'updatedAt'])
+        && request.resource.data.qrSlugs is list
+        && request.resource.data.qrSlugs.size() == 1
+        && request.resource.data.lastMutatedSlug is string
+        && request.resource.data.qrSlugs[0] == request.resource.data.lastMutatedSlug
+        && !exists(linkPath(request.resource.data.lastMutatedSlug))
+        && existsAfter(linkPath(request.resource.data.lastMutatedSlug))
+        && getAfter(linkPath(request.resource.data.lastMutatedSlug)).data.ownerId == uid;
+
+      allow update: if isSignedIn()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['qrSlugs', 'lastMutatedSlug', 'updatedAt'])
+        && request.resource.data.qrSlugs is list
+        && request.resource.data.lastMutatedSlug is string
+        && (
+          // Case A: Atomically adding 1 new QR link (verified user, max 10)
+          (
+            isVerifiedUser()
+            && request.resource.data.qrSlugs.size() == resource.data.qrSlugs.size() + 1
+            && request.resource.data.qrSlugs.size() <= 10
+            && !(request.resource.data.lastMutatedSlug in resource.data.qrSlugs)
+            && (request.resource.data.lastMutatedSlug in request.resource.data.qrSlugs)
+            && request.resource.data.qrSlugs.toSet().difference(resource.data.qrSlugs.toSet()).size() == 1
+            && !exists(linkPath(request.resource.data.lastMutatedSlug))
+            && existsAfter(linkPath(request.resource.data.lastMutatedSlug))
+            && getAfter(linkPath(request.resource.data.lastMutatedSlug)).data.ownerId == uid
+          )
+          ||
+          // Case B: Atomically removing 1 deleted QR link (frees a slot)
+          (
+            request.resource.data.qrSlugs.size() == resource.data.qrSlugs.size() - 1
+            && (request.resource.data.lastMutatedSlug in resource.data.qrSlugs)
+            && !(request.resource.data.lastMutatedSlug in request.resource.data.qrSlugs)
+            && resource.data.qrSlugs.toSet().difference(request.resource.data.qrSlugs.toSet()).size() == 1
+            && exists(linkPath(request.resource.data.lastMutatedSlug))
+            && !existsAfter(linkPath(request.resource.data.lastMutatedSlug))
+            && get(linkPath(request.resource.data.lastMutatedSlug)).data.ownerId == uid
+          )
+        );
+
+      // Users can delete their quota ledger only after all their QR links are deleted
+      // (supports GDPR Art. 17 Right to Erasure while preventing quota-reset abuse).
+      allow delete: if isSignedIn()
+        && request.auth.uid == uid
+        && resource.data.qrSlugs.size() == 0;
+    }
+
+    // =========================================================================
+    // DYNAMIC QR LINKS (`qr_links/{slug}`)
+    // =========================================================================
     match /qr_links/{slug} {
       // Public single-document GET so /r/<slug> redirects work anonymously with zero cookies.
       allow get: if true;
@@ -126,14 +242,25 @@ service cloud.firestore {
       // Signed-in users can ONLY list their own QR links (`where('ownerId', isEqualTo: uid)`).
       allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
 
-      // Any signed-in user can claim an unused, URL-safe slug (1-64 chars).
-      allow create: if slug.matches('^[a-z0-9][a-z0-9_-]{0,63}$') && isValidCreate();
+      // Verified users can claim an unused slug while staying within the 10-link quota.
+      allow create: if isVerifiedUser()
+        && slug.matches('^[a-z0-9][a-z0-9_-]{0,63}$')
+        && isValidQrCreateData()
+        && isQuotaBatchValidOnCreate(slug);
 
-      // Updates allowed either for the link owner editing destinations OR anonymous +1 scan counters.
+      // Updates allowed either for the link owner editing destinations/design
+      // OR anonymous +1 scan counter increments from /r.html.
       allow update: if isValidOwnerUpdate() || isValidAnonymousScanIncrement();
 
-      // Only the link owner can delete their QR link.
-      allow delete: if isOwner();
+      // Owners can delete their own QR link (must also update users/{uid} if present).
+      allow delete: if isOwner()
+        && (
+          !exists(userPath(request.auth.uid))
+          || (
+            existsAfter(userPath(request.auth.uid))
+            && !(slug in getAfter(userPath(request.auth.uid)).data.qrSlugs)
+          )
+        );
     }
 
     // Deny access to any other collections by default.
