@@ -3,10 +3,14 @@ import 'dart:typed_data';
 
 import 'package:web/web.dart' as web;
 
-void downloadPngBytes(Uint8List bytes, String fileName) {
+void downloadBytes({
+  required Uint8List bytes,
+  required String fileName,
+  required String mimeType,
+}) {
   final blob = web.Blob(
     <JSAny>[bytes.toJS].toJS,
-    web.BlobPropertyBag(type: 'image/png'),
+    web.BlobPropertyBag(type: mimeType),
   );
   final objectUrl = web.URL.createObjectURL(blob);
   final anchor = web.document.createElement('a') as web.HTMLAnchorElement
