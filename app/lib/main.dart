@@ -2,7 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import 'core/app_config.dart';
-import 'core/app_theme.dart';
+import 'core/theme/app_theme.dart';
 import 'repositories/auth_repository.dart';
 import 'repositories/qr_link_repository.dart';
 import 'services/qr_render_service.dart';
