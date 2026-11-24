@@ -5,6 +5,7 @@ import '../../core/constants/app_dimensions.dart';
 import '../../core/qr_icon_catalog.dart';
 import '../../models/qr_link.dart';
 import '../../widgets/clay/clay.dart';
+import '../../widgets/shared/brand_icons.dart';
 
 /// Tactile clay card for a single dynamic QR link.
 class QrLinkClayCard extends StatelessWidget {
@@ -64,11 +65,13 @@ class QrLinkClayCard extends StatelessWidget {
                       highlightOpacity: 0.55,
                       shadeOpacity: 0.4,
                     ),
-                    child: Icon(
-                      iconOption?.icon ?? Icons.qr_code_2_rounded,
-                      size: 20,
-                      color: Colors.white,
-                    ),
+                    child: iconOption != null
+                        ? iconOption.buildGlyph(size: 20, color: Colors.white)
+                        : const Icon(
+                            Icons.qr_code_2_rounded,
+                            size: 20,
+                            color: Colors.white,
+                          ),
                   ),
                   const SizedBox(width: 14),
                   Column(
@@ -198,19 +201,32 @@ class QrLinkClayCard extends StatelessWidget {
             runSpacing: 6,
             children: [
               _RouteDestination(
-                icon: Icons.language_rounded,
+                leading: const Icon(
+                  Icons.language_rounded,
+                  size: 15,
+                  color: AppColors.textMuted,
+                ),
                 label: 'Web',
                 url: link.webUrl,
               ),
               if (link.iosUrl.isNotEmpty)
                 _RouteDestination(
-                  icon: Icons.phone_iphone_rounded,
+                  leading: const BrandVectorIcon(
+                    BrandIconKind.apple,
+                    size: 15,
+                    color: AppColors.textMuted,
+                  ),
                   label: 'iOS',
                   url: link.iosUrl,
                 ),
               if (link.androidUrl.isNotEmpty)
                 _RouteDestination(
-                  icon: Icons.android_rounded,
+                  leading: const BrandVectorIcon(
+                    BrandIconKind.googlePlay,
+                    size: 14,
+                    color: AppColors.textMuted,
+                    multicolor: true,
+                  ),
                   label: 'Android',
                   url: link.androidUrl,
                 ),
@@ -228,17 +244,30 @@ class QrLinkClayCard extends StatelessWidget {
               runSpacing: 8,
               children: [
                 _ScanStat(
-                  icon: Icons.bar_chart_rounded,
+                  leading: const Icon(
+                    Icons.bar_chart_rounded,
+                    size: 15,
+                    color: AppColors.primary,
+                  ),
                   label: 'Total',
                   count: link.totalScans,
                 ),
                 _ScanStat(
-                  icon: Icons.phone_iphone_rounded,
+                  leading: const BrandVectorIcon(
+                    BrandIconKind.apple,
+                    size: 15,
+                    color: AppColors.primary,
+                  ),
                   label: 'iOS',
                   count: link.iosScans,
                 ),
                 _ScanStat(
-                  icon: Icons.android_rounded,
+                  leading: const BrandVectorIcon(
+                    BrandIconKind.googlePlay,
+                    size: 14,
+                    color: AppColors.primary,
+                    multicolor: true,
+                  ),
                   label: 'Android',
                   count: link.androidScans,
                 ),
@@ -253,12 +282,12 @@ class QrLinkClayCard extends StatelessWidget {
 
 class _RouteDestination extends StatelessWidget {
   const _RouteDestination({
-    required this.icon,
+    required this.leading,
     required this.label,
     required this.url,
   });
 
-  final IconData icon;
+  final Widget leading;
   final String label;
   final String url;
 
@@ -269,7 +298,7 @@ class _RouteDestination extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 15, color: AppColors.textMuted),
+          leading,
           const SizedBox(width: 5),
           Text(
             '$label: ',
@@ -298,12 +327,12 @@ class _RouteDestination extends StatelessWidget {
 
 class _ScanStat extends StatelessWidget {
   const _ScanStat({
-    required this.icon,
+    required this.leading,
     required this.label,
     required this.count,
   });
 
-  final IconData icon;
+  final Widget leading;
   final String label;
   final int count;
 
@@ -312,7 +341,7 @@ class _ScanStat extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 15, color: AppColors.primary),
+        leading,
         const SizedBox(width: 6),
         Text(
           '$label ',

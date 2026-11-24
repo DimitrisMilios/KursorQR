@@ -180,10 +180,10 @@ class _InstantQrSandboxState extends State<InstantQrSandbox> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          iconOpt.icon,
-                          size: 15,
+                        iconOpt.buildGlyph(
+                          size: 16,
                           color: AppColors.textPrimary,
+                          multicolorBrand: true,
                         ),
                         const SizedBox(width: 6),
                         Text(

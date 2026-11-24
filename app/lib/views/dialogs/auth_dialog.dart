@@ -6,6 +6,7 @@ import '../../core/constants/app_dimensions.dart';
 import '../../viewmodels/auth_form_viewmodel.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../widgets/clay/clay.dart';
+import '../../widgets/shared/brand_icons.dart';
 import '../../widgets/shared/brand_logo.dart';
 import 'gdpr_policy_dialog.dart';
 
@@ -116,7 +117,20 @@ class _AuthDialogState extends State<AuthDialog> {
               ],
               ClayButton.gold(
                 label: 'Continue with Google',
-                icon: Icons.login_rounded,
+                leading: Container(
+                  width: 24,
+                  height: 24,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const BrandVectorIcon(
+                    BrandIconKind.googleG,
+                    size: 16,
+                    multicolor: true,
+                  ),
+                ),
                 expand: true,
                 busy: _formVm.isBusy,
                 onPressed: _formVm.isBusy ? null : _onGoogle,

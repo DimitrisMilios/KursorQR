@@ -6,6 +6,7 @@ import '../../models/qr_link.dart';
 import '../../viewmodels/dashboard_viewmodel.dart';
 import '../../viewmodels/qr_link_form_viewmodel.dart';
 import '../../widgets/clay/clay.dart';
+import '../../widgets/shared/brand_icons.dart';
 import '../../widgets/shared/clay_asset_icon.dart';
 
 /// Claymorphism modal form to create or edit a dynamic QR link, strictly bound
@@ -169,10 +170,13 @@ class _QrLinkFormDialogState extends State<QrLinkFormDialog> {
                 keyboardType: TextInputType.url,
                 errorText: _vm.iosUrlError,
                 onChanged: _vm.setIosUrl,
-                prefix: const Icon(
-                  Icons.phone_iphone_rounded,
-                  size: 18,
-                  color: AppColors.textMuted,
+                prefix: const Center(
+                  widthFactor: 1,
+                  child: BrandVectorIcon(
+                    BrandIconKind.apple,
+                    size: 17,
+                    color: AppColors.textMuted,
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -183,10 +187,14 @@ class _QrLinkFormDialogState extends State<QrLinkFormDialog> {
                 keyboardType: TextInputType.url,
                 errorText: _vm.androidUrlError,
                 onChanged: _vm.setAndroidUrl,
-                prefix: const Icon(
-                  Icons.android_rounded,
-                  size: 18,
-                  color: AppColors.textMuted,
+                prefix: const Center(
+                  widthFactor: 1,
+                  child: BrandVectorIcon(
+                    BrandIconKind.googlePlay,
+                    size: 16,
+                    color: AppColors.textMuted,
+                    multicolor: true,
+                  ),
                 ),
               ),
               const SizedBox(height: 18),

@@ -146,28 +146,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: AmbientBackground(
-        child: Column(
+        child: Stack(
           children: [
-            Selector<DashboardViewModel, (bool, bool, String)>(
-              selector: (_, vm) => (
-                vm.isLoading,
-                vm.isQuotaReached,
-                vm.formattedLastRefreshed,
-              ),
-              builder: (context, state, _) => DashboardNavbar(
-                ownerEmail: _vm.ownerEmail,
-                isLoading: state.$1,
-                isQuotaReached: state.$2,
-                maxQuota: _vm.maxQuota,
-                lastRefreshedLabel: state.$3,
-                onRefresh: _vm.refresh,
-                onCreateLink: _openCreateOrEdit,
-                onOpenAccount: _openAccountSettings,
-                onOpenPrivacy: _openPrivacyPolicy,
-                onSignOut: widget.authViewModel.signOut,
-              ),
-            ),
-            Expanded(
+            // 1. Full-height workspace list gliding underneath the floating navbar
+            Positioned.fill(
               child: Selector<DashboardViewModel, (bool, bool)>(
                 selector: (_, vm) => (vm.hasLoadedOnce, vm.isLoading),
                 builder: (context, loadState, _) {
@@ -185,7 +167,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         maxWidth: AppDimensions.maxContentWidth,
                       ),
                       child: ListView(
-                        padding: const EdgeInsets.fromLTRB(24, 18, 24, 48),
+                        padding: const EdgeInsets.fromLTRB(24, 112, 24, 48),
                         children: [
                           // Title + Quota Meter
                           Selector<DashboardViewModel,
@@ -485,6 +467,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   );
                 },
+              ),
+            ),
+
+            // 2. Sticky floating clay navbar on top
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Selector<DashboardViewModel, (bool, bool, String)>(
+                selector: (_, vm) => (
+                  vm.isLoading,
+                  vm.isQuotaReached,
+                  vm.formattedLastRefreshed,
+                ),
+                builder: (context, state, _) => DashboardNavbar(
+                  ownerEmail: _vm.ownerEmail,
+                  isLoading: state.$1,
+                  isQuotaReached: state.$2,
+                  maxQuota: _vm.maxQuota,
+                  lastRefreshedLabel: state.$3,
+                  onRefresh: _vm.refresh,
+                  onCreateLink: _openCreateOrEdit,
+                  onOpenAccount: _openAccountSettings,
+                  onOpenPrivacy: _openPrivacyPolicy,
+                  onSignOut: widget.authViewModel.signOut,
+                ),
               ),
             ),
           ],

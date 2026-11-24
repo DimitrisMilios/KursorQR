@@ -6,6 +6,7 @@ import 'package:pretty_qr_code/pretty_qr_code.dart';
 
 import '../core/qr_icon_catalog.dart';
 import '../models/qr_design_config.dart';
+import '../widgets/shared/brand_icons.dart';
 
 /// Stateless/cached rendering service for PrettyQR linear gradients, built-in
 /// vector center icons, local custom logo badges, and high-res PNG exports.
@@ -80,24 +81,34 @@ class QrRenderService {
         ? Color.lerp(design.fgColor, design.fgColorEnd, 0.35)!
         : design.fgColor;
 
-    final textPainter = TextPainter(
-      textDirection: TextDirection.ltr,
-      text: TextSpan(
-        text: String.fromCharCode(option.icon.codePoint),
-        style: TextStyle(
-          fontSize: 136,
-          fontFamily: option.icon.fontFamily,
-          package: option.icon.fontPackage,
-          color: iconColor,
+    if (option.brandIcon != null) {
+      const double pad = 54.0;
+      paintBrandIcon(
+        canvas,
+        const Rect.fromLTWH(pad, pad, size - pad * 2, size - pad * 2),
+        option.brandIcon!,
+        color: iconColor,
+      );
+    } else {
+      final textPainter = TextPainter(
+        textDirection: TextDirection.ltr,
+        text: TextSpan(
+          text: String.fromCharCode(option.icon.codePoint),
+          style: TextStyle(
+            fontSize: 136,
+            fontFamily: option.icon.fontFamily,
+            package: option.icon.fontPackage,
+            color: iconColor,
+          ),
         ),
-      ),
-    )..layout();
+      )..layout();
 
-    final offset = Offset(
-      (size - textPainter.width) / 2,
-      (size - textPainter.height) / 2,
-    );
-    textPainter.paint(canvas, offset);
+      final offset = Offset(
+        (size - textPainter.width) / 2,
+        (size - textPainter.height) / 2,
+      );
+      textPainter.paint(canvas, offset);
+    }
 
     final picture = recorder.endRecording();
     final image = await picture.toImage(dim, dim);

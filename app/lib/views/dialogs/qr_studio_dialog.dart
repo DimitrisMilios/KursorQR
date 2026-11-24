@@ -455,10 +455,10 @@ class _QrStudioDialogState extends State<QrStudioDialog> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(
-                                item.icon,
-                                size: 15,
+                              item.buildGlyph(
+                                size: 16,
                                 color: AppColors.textPrimary,
+                                multicolorBrand: true,
                               ),
                               const SizedBox(width: 5),
                               Text(
