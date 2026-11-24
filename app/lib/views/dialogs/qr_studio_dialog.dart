@@ -585,7 +585,7 @@ class _ColorKnobRow extends StatelessWidget {
             controller: hexController,
             onChanged: onHexChanged,
             monospace: true,
-            hint: '#1A4731',
+            hint: '#8B3103',
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
           ),

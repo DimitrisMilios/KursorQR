@@ -142,12 +142,12 @@ class _InstantQrSandboxState extends State<InstantQrSandbox> {
                     onTap: () => vm.applyGradientPreset(preset),
                   ),
                 ClayColorKnob(
-                  color: AppColors.primaryDeep,
-                  tooltip: 'Classic Forest',
+                  color: AppColors.primary,
+                  tooltip: 'Classic Deep Rust',
                   selected: !design.useGradient,
                   onTap: () {
                     vm.setUseGradient(false);
-                    vm.setFgColor(AppColors.primaryDeep);
+                    vm.setFgColor(AppColors.primary);
                   },
                 ),
               ],

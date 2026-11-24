@@ -79,20 +79,20 @@ if OPTS["out"]:
 # --------------------------------------------------------------------------------------
 
 TOKENS_HEX = {
-    "sand": "EFE8D6",
-    "clay": "FBF6EA",
-    "clayDeep": "F1EAD8",
-    "primary": "2D6A4F",
-    "primaryDeep": "1A4731",
-    "primaryLight": "52B788",
-    "mint": "CDE7D6",
-    "gold": "E8C464",
-    "goldDeep": "C9A440",
-    "goldLight": "FFE79A",
-    "butter": "FFF0C2",
-    "coral": "F08A7E",
-    "coralDeep": "D9675B",
-    "sage": "8FBF9F",
+    "sand": "EAE0C8",
+    "clay": "F7F1E3",
+    "clayDeep": "E3D7BC",
+    "primary": "8B3103",
+    "primaryDeep": "5C1F02",
+    "primaryLight": "C45722",
+    "mint": "F0D6C4",
+    "gold": "DFA94B",
+    "goldDeep": "B88329",
+    "goldLight": "FAD284",
+    "butter": "F9EAC8",
+    "coral": "D9534F",
+    "coralDeep": "B53531",
+    "sage": "5C8D6B",
 }
 
 TOKEN_BASE = {}
@@ -671,13 +671,13 @@ def calibrate_tokens(iterations=4, verbose=True):
 
 
 def build_logo():
-    """Chunky forest-green squircle with three embossed gold QR finder blocks + gold cursor."""
-    slab("logo_base", 2.0, 2.0, 0.24, "primaryDeep", radius=0.48, bevel_frac=0.14)
-    qr_finder("logo_tl", 0.58, 0.14, "gold", inner_token="primaryDeep", dot_token="goldLight",
+    """Chunky Deep Rust squircle with three embossed Pearl QR finder blocks + warm Gold cursor."""
+    slab("logo_base", 2.0, 2.0, 0.24, "primary", radius=0.48, bevel_frac=0.14)
+    qr_finder("logo_tl", 0.58, 0.14, "clay", inner_token="primary", dot_token="goldLight",
               location=(-0.44, 0.44, 0.15))
-    qr_finder("logo_tr", 0.58, 0.14, "gold", inner_token="primaryDeep", dot_token="goldLight",
+    qr_finder("logo_tr", 0.58, 0.14, "clay", inner_token="primary", dot_token="goldLight",
               location=(0.44, 0.44, 0.15))
-    qr_finder("logo_bl", 0.58, 0.14, "gold", inner_token="primaryDeep", dot_token="goldLight",
+    qr_finder("logo_bl", 0.58, 0.14, "clay", inner_token="primary", dot_token="goldLight",
               location=(-0.44, -0.44, 0.15))
     cursor_arrow("logo_cursor", scale=0.82, thickness=0.18, token="gold",
                  location=(0.40, -0.36, 0.21), rotation=(0, 0, 22))

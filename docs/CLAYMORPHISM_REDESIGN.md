@@ -16,14 +16,14 @@ Invariants: Firebase Spark Auth & EU Cloud Firestore schema, `firestore.rules`, 
 - **Color discipline**: **Action = Forest Green (`primary`)**, **Selected / Highlight CTA = Gold (`gold`)**, **Danger = Coral (`coral`)**.
 - **Anti-clutter**: Pills/chips are permitted **only when interactive**. Static decorative badges are removed; exclamation marks are removed from all user-facing strings and toasts.
 
-### A.2 Palette (`app/lib/core/constants/app_colors.dart`)
+### A.2 Palette (`app/lib/core/constants/app_colors.dart` — Deep Rust & Pearl)
 
-- Base: `sand` `#EFE8D6`, `sandDeep` `#E6DEC8`, `clay` `#FBF6EA`, `clayDeep` `#F1EAD8`
-- Lighting: `clayLight` `#FFFFFF`, `clayShade` `#1A4731`, `clayShadow` `#1A4731`
-- Primary: `primary` `#2D6A4F`, `primaryDeep` `#1A4731`, `primaryLight` `#52B788`, `mint` `#CDE7D6`
-- Gold accent: `gold` `#E8C464`, `goldDeep` `#C9A440`, `goldLight` `#FFE79A`, `butter` `#FFF0C2`
-- Semantic: `coral` `#F08A7E`, `coralDeep` `#D9675B`, `coralSoft` `#FCE2DE`, `sage` `#8FBF9F`
-- Text: `textPrimary` `#1F3A2E`, `textSecondary` `#3F6350`, `textMuted` `#7A917F`, `textOnPrimary` `#FFFFFF`
+- Base: `sand` `#EAE0C8` (Pearl), `sandDeep` `#DFD3B6`, `clay` `#F7F1E3`, `clayDeep` `#E3D7BC`
+- Lighting: `clayLight` `#FFFFFF`, `clayShade` `#5C1F02`, `clayShadow` `#5C1F02`
+- Primary: `primary` `#8B3103` (Deep Rust), `primaryDeep` `#5C1F02`, `primaryLight` `#C45722`, `mint` `#F0D6C4`
+- Accent: `gold` `#DFA94B`, `goldDeep` `#B88329`, `goldLight` `#FAD284`, `butter` `#F9EAC8`
+- Semantic: `coral` `#D9534F`, `coralDeep` `#B53531`, `coralSoft` `#F9D8D6`, `sage` `#5C8D6B`
+- Text: `textPrimary` `#2C1608`, `textSecondary` `#5E3A24`, `textMuted` `#8E6E58`, `textOnPrimary` `#FFFFFF`
 
 ### A.3 Spacing & Radii (`app/lib/core/constants/app_dimensions.dart`)
 
