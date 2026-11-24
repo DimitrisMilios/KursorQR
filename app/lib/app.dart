@@ -9,7 +9,7 @@ import 'services/clipboard_service.dart';
 import 'services/qr_render_service.dart';
 import 'viewmodels/auth_viewmodel.dart';
 import 'viewmodels/dashboard_viewmodel.dart';
-import 'views/dashboard_screen.dart';
+import 'views/dashboard/dashboard_screen.dart';
 import 'views/landing/landing_page.dart';
 import 'views/verify_email_screen.dart';
 import 'widgets/clay/clay.dart';
