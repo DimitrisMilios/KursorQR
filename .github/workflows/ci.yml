@@ -64,6 +64,7 @@ jobs:
         working-directory: app
         run: flutter test
 
-      - name: Verify Flutter Web release build
-        working-directory: app
-        run: flutter build web --release
+      - name: Verify Flutter Web release build & fingerprint
+        run: |
+          cd app && flutter build web --release && cd ..
+          node tools/fingerprint_web.mjs app/build/web
