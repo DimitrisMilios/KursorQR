@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_colors.dart';
@@ -327,6 +329,7 @@ class _StaggerIn extends StatefulWidget {
 class _StaggerInState extends State<_StaggerIn>
     with SingleTickerProviderStateMixin {
   late final AnimationController _c;
+  Timer? _delayTimer;
 
   @override
   void initState() {
@@ -338,7 +341,7 @@ class _StaggerInState extends State<_StaggerIn>
     if (widget.delay == Duration.zero) {
       _c.value = 1;
     } else {
-      Future<void>.delayed(widget.delay, () {
+      _delayTimer = Timer(widget.delay, () {
         if (mounted) _c.forward();
       });
     }
@@ -346,6 +349,7 @@ class _StaggerInState extends State<_StaggerIn>
 
   @override
   void dispose() {
+    _delayTimer?.cancel();
     _c.dispose();
     super.dispose();
   }

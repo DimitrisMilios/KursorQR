@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_colors.dart';
@@ -230,6 +232,7 @@ class ClayStagger extends StatefulWidget {
 class _ClayStaggerState extends State<ClayStagger>
     with SingleTickerProviderStateMixin {
   late final AnimationController _c;
+  Timer? _delayTimer;
 
   @override
   void initState() {
@@ -242,8 +245,10 @@ class _ClayStaggerState extends State<ClayStagger>
     final delay = widget.delay * cappedIndex;
     if (widget.delay == Duration.zero) {
       _c.value = 1;
+    } else if (delay == Duration.zero) {
+      _c.forward();
     } else {
-      Future<void>.delayed(delay, () {
+      _delayTimer = Timer(delay, () {
         if (mounted) _c.forward();
       });
     }
@@ -251,6 +256,7 @@ class _ClayStaggerState extends State<ClayStagger>
 
   @override
   void dispose() {
+    _delayTimer?.cancel();
     _c.dispose();
     super.dispose();
   }

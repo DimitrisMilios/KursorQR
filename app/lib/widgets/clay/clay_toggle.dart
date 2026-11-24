@@ -166,39 +166,46 @@ class _ClayToggleState extends State<ClayToggle> with TickerProviderStateMixin {
 
     if (widget.label == null) return toggle;
 
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                widget.label!,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: AppDimensions.fontMd,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              if (widget.subtitle != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: Text(
-                    widget.subtitle!,
+    return MouseRegion(
+      cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: enabled ? () => widget.onChanged!(!widget.value) : null,
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    widget.label!,
                     style: const TextStyle(
-                      color: AppColors.textMuted,
-                      fontSize: AppDimensions.fontSm,
-                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                      fontSize: AppDimensions.fontMd,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                ),
-            ],
-          ),
+                  if (widget.subtitle != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        widget.subtitle!,
+                        style: const TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: AppDimensions.fontSm,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            IgnorePointer(child: toggle),
+          ],
         ),
-        const SizedBox(width: 12),
-        toggle,
-      ],
+      ),
     );
   }
 }
