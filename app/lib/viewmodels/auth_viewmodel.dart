@@ -82,7 +82,7 @@ class AuthViewModel extends ChangeNotifier {
     return _runAuthAction(
       () async {
         await _authRepo.sendEmailVerification();
-        _infoMessage = 'Verification email sent! Check your inbox and spam folder.';
+        _infoMessage = 'Verification email sent. Check your inbox and spam folder.';
       },
     );
   }

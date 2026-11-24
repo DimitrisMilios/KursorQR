@@ -38,44 +38,44 @@ class QrStudioViewModel extends ChangeNotifier {
   }
 
   static const List<Color> fgSwatches = [
-    Color(0xFF0F172A),
-    Color(0xFF000000),
+    Color(0xFF8B3103),
+    Color(0xFF5C1F02),
+    Color(0xFF2C1608),
     Color(0xFF4F46E5),
     Color(0xFF1D4ED8),
-    Color(0xFF047857),
-    Color(0xFFBE123C),
+    Color(0xFF1A4731),
     Color(0xFF7C3AED),
   ];
 
   static const List<Color> bgSwatches = [
     Color(0xFFFFFFFF),
-    Color(0xFFF8FAFC),
-    Color(0xFFEEF2FF),
+    Color(0xFFF7F1E3),
+    Color(0xFFEAE0C8),
+    Color(0xFFF9EAC8),
     Color(0xFFECFDF5),
-    Color(0xFFFFFBEB),
-    Color(0xFF0F172A),
+    Color(0xFF2C1608),
   ];
 
   static const List<QrGradientPreset> gradientPresets = [
+    QrGradientPreset(
+      label: 'Deep Rust → Terracotta',
+      start: Color(0xFF5C1F02),
+      end: Color(0xFFC45722),
+    ),
+    QrGradientPreset(
+      label: 'Deep Rust → Gold',
+      start: Color(0xFF8B3103),
+      end: Color(0xFFDFA94B),
+    ),
     QrGradientPreset(
       label: 'Indigo → Ocean',
       start: Color(0xFF4F46E5),
       end: Color(0xFF0284C7),
     ),
     QrGradientPreset(
-      label: 'Violet → Rose',
-      start: Color(0xFF7C3AED),
-      end: Color(0xFFE11D48),
-    ),
-    QrGradientPreset(
-      label: 'Emerald → Teal',
-      start: Color(0xFF047857),
-      end: Color(0xFF0D9488),
-    ),
-    QrGradientPreset(
-      label: 'Midnight → Indigo',
-      start: Color(0xFF0F172A),
-      end: Color(0xFF4338CA),
+      label: 'Forest → Emerald',
+      start: Color(0xFF1A4731),
+      end: Color(0xFF52B788),
     ),
   ];
 

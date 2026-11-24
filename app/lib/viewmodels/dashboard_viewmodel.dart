@@ -6,6 +6,7 @@ import '../core/app_config.dart';
 import '../models/qr_design_config.dart';
 import '../models/qr_link.dart';
 import '../repositories/qr_link_repository.dart';
+import '../services/clipboard_service.dart';
 import '../services/file_downloader.dart';
 
 /// MVVM ViewModel for the authenticated user's multi-tenant QR workspace.
@@ -16,9 +17,12 @@ class DashboardViewModel extends ChangeNotifier {
     required QrLinkRepository repository,
     required this.ownerId,
     required this.ownerEmail,
-  }) : _repository = repository;
+    ClipboardService clipboardService = const ClipboardService(),
+  })  : _repository = repository,
+        _clipboardService = clipboardService;
 
   final QrLinkRepository _repository;
+  final ClipboardService _clipboardService;
   final String ownerId;
   final String ownerEmail;
 
@@ -35,6 +39,18 @@ class DashboardViewModel extends ChangeNotifier {
   bool get hasLoadedOnce => _hasLoadedOnce;
   String? get errorMessage => _errorMessage;
   DateTime? get lastRefreshedAt => _lastRefreshedAt;
+
+  String get formattedLastRefreshed {
+    final dt = _lastRefreshedAt;
+    if (dt == null) return '';
+    final h = dt.hour.toString().padLeft(2, '0');
+    final m = dt.minute.toString().padLeft(2, '0');
+    final s = dt.second.toString().padLeft(2, '0');
+    return '$h:$m:$s';
+  }
+
+  Future<void> copyRedirectUrl(QrLink link) =>
+      _clipboardService.copyText(link.redirectUrl);
 
   int get usedQuota => _links.length;
   int get maxQuota => AppConfig.maxQrLinksPerAccount;

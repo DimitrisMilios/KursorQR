@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 
+import '../../core/constants/app_colors.dart';
+import '../../core/constants/app_dimensions.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/dashboard_viewmodel.dart';
+import '../../widgets/clay/clay.dart';
+import '../../widgets/shared/clay_asset_icon.dart';
+import 'confirm_danger_dialog.dart';
 import 'gdpr_policy_dialog.dart';
 
-/// Account & GDPR Data Controls modal (Art. 20 JSON Export + Art. 17 Account Deletion).
+/// Account & GDPR Data Controls modal (Art. 20 JSON Export + Art. 17 Erasure).
 class AccountSettingsDialog extends StatefulWidget {
   const AccountSettingsDialog({
     super.key,
@@ -21,208 +26,188 @@ class AccountSettingsDialog extends StatefulWidget {
 
 class _AccountSettingsDialogState extends State<AccountSettingsDialog> {
   Future<void> _confirmAndDeleteAccount() async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showClayDialog<bool>(
       context: context,
-      builder: (dialogCtx) => AlertDialog(
-        title: const Text('Permanently Delete Account & All Data?'),
-        content: const Text(
-          'This GDPR Right to Erasure action will immediately and permanently delete:\n\n'
-          '• All of your dynamic QR links (printed codes will stop redirecting)\n'
-          '• Your quota ledger in Firestore\n'
-          '• Your Firebase Authentication account\n\n'
-          'This cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogCtx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(dialogCtx).colorScheme.error,
-              foregroundColor: Theme.of(dialogCtx).colorScheme.onError,
-            ),
-            onPressed: () => Navigator.of(dialogCtx).pop(true),
-            child: const Text('Yes, Erase Everything'),
-          ),
-        ],
+      builder: (_) => const ConfirmDangerDialog(
+        title: 'Erase account and all data',
+        message:
+            'This GDPR Right to Erasure action permanently deletes:\n\n'
+            '• All of your dynamic QR links (printed codes will stop redirecting)\n'
+            '• Your quota ledger in EU Cloud Firestore\n'
+            '• Your Firebase Authentication account\n\n'
+            'This cannot be undone.',
+        confirmLabel: 'Erase everything',
       ),
     );
-
     if (confirmed != true || !mounted) return;
 
     final deleted = await widget.authViewModel.deleteAccountAndAllData();
-    if (deleted && mounted) {
-      Navigator.of(context).pop();
-    }
+    if (deleted && mounted) Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final authVm = widget.authViewModel;
     final dashVm = widget.dashboardViewModel;
 
     return ListenableBuilder(
       listenable: Listenable.merge([authVm, dashVm]),
       builder: (context, _) {
-        return AlertDialog(
-          title: Row(
-            children: [
-              const Icon(Icons.manage_accounts_rounded),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Text(
-                  'Account & GDPR Privacy',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-              IconButton(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.close_rounded),
-              ),
-            ],
+        return ClayDialog(
+          width: 500,
+          title: 'Account & GDPR privacy',
+          subtitle: 'Export your data or erase your account anytime.',
+          headerIcon: const ClayAssetIcon(
+            asset: 'assets/clay/icon_account.png',
+            fallbackIcon: Icons.manage_accounts_rounded,
+            size: 32,
           ),
-          content: SizedBox(
-            width: 480,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerLowest,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: theme.colorScheme.outlineVariant,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Account metadata well (replaces bordered card + Material Chips)
+              ClayWell(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      dashVm.ownerEmail,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 18,
+                      runSpacing: 6,
                       children: [
-                        Text(
-                          dashVm.ownerEmail,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 6,
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Chip(
-                              avatar: Icon(
-                                Icons.verified_rounded,
-                                size: 16,
-                                color: Colors.green.shade700,
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: AppColors.sage,
                               ),
-                              label: const Text('Verified Account'),
-                              visualDensity: VisualDensity.compact,
                             ),
-                            Chip(
-                              avatar: const Icon(Icons.qr_code_2_rounded, size: 16),
-                              label: Text(
-                                'Free Quota: ${dashVm.usedQuota}/${dashVm.maxQuota}',
+                            const SizedBox(width: 6),
+                            const Text(
+                              'Verified account',
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontSize: AppDimensions.fontSm,
+                                fontWeight: FontWeight.w700,
                               ),
-                              visualDensity: VisualDensity.compact,
+                            ),
+                          ],
+                        ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.qr_code_2_rounded,
+                              size: 15,
+                              color: AppColors.textSecondary,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              'Free quota ${dashVm.usedQuota} / ${dashVm.maxQuota}',
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: AppDimensions.fontSm,
+                                fontWeight: FontWeight.w700,
+                                fontFeatures: [FontFeature.tabularFigures()],
+                              ),
                             ),
                           ],
                         ),
                       ],
                     ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              if (authVm.errorMessage != null) ...[
+                ClayWell.coral(
+                  padding: const EdgeInsets.all(14),
+                  child: Text(
+                    authVm.errorMessage!,
+                    style: const TextStyle(
+                      color: AppColors.coralDeep,
+                      fontSize: AppDimensions.fontBody,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                  const SizedBox(height: 16),
-                  if (authVm.errorMessage != null) ...[
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      margin: const EdgeInsets.only(bottom: 14),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.errorContainer,
-                        borderRadius: BorderRadius.circular(10),
+                ),
+                const SizedBox(height: 16),
+              ],
+              const ClayLabel(
+                'GDPR Data Rights',
+                padding: EdgeInsets.only(left: 4, bottom: 10),
+              ),
+              ClayButton.neutral(
+                label: 'Export data as JSON (Art. 20)',
+                icon: Icons.download_rounded,
+                expand: true,
+                onPressed: authVm.isBusy
+                    ? null
+                    : () {
+                        dashVm.exportMyDataAsJson();
+                        ClayToast.show(
+                          context,
+                          'Exported kursorqr-gdpr-export.json',
+                        );
+                      },
+              ),
+              const SizedBox(height: 10),
+              ClayButton.neutral(
+                label: 'View privacy & cookie policy',
+                icon: Icons.shield_outlined,
+                expand: true,
+                onPressed: () => showClayDialog<void>(
+                  context: context,
+                  builder: (_) => const GdprPolicyDialog(),
+                ),
+              ),
+              const SizedBox(height: 22),
+              ClayWell.coral(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const ClayLabel(
+                      'Danger Zone · GDPR Art. 17 Right to Erasure',
+                      color: AppColors.coralDeep,
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Deletes all your QR links, quota ledger, and authentication account permanently.',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: AppDimensions.fontSm,
+                        fontWeight: FontWeight.w600,
+                        height: 1.45,
                       ),
-                      child: Text(
-                        authVm.errorMessage!,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: theme.colorScheme.onErrorContainer,
-                        ),
-                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    ClayButton.danger(
+                      label: 'Delete account and all data',
+                      busyLabel: 'Erasing...',
+                      icon: Icons.delete_forever_rounded,
+                      expand: true,
+                      busy: authVm.isBusy,
+                      onPressed: authVm.isBusy ? null : _confirmAndDeleteAccount,
                     ),
                   ],
-                  Text(
-                    'GDPR Data Rights',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  OutlinedButton.icon(
-                    onPressed: authVm.isBusy
-                        ? null
-                        : () {
-                            dashVm.exportMyDataAsJson();
-                            ScaffoldMessenger.of(context)
-                              ..hideCurrentSnackBar()
-                              ..showSnackBar(
-                                const SnackBar(
-                                  content: Text('Exported kursorqr-gdpr-export.json'),
-                                ),
-                              );
-                          },
-                    icon: const Icon(Icons.download_rounded),
-                    label: const Text('Export My Data as JSON (GDPR Art. 20)'),
-                  ),
-                  const SizedBox(height: 10),
-                  OutlinedButton.icon(
-                    onPressed: () => showDialog<void>(
-                      context: context,
-                      builder: (_) => const GdprPolicyDialog(),
-                    ),
-                    icon: const Icon(Icons.shield_outlined),
-                    label: const Text('View Privacy & Cookie Policy'),
-                  ),
-                  const SizedBox(height: 20),
-                  Divider(color: theme.colorScheme.outlineVariant),
-                  const SizedBox(height: 14),
-                  Text(
-                    'Danger Zone (GDPR Art. 17 Right to Erasure)',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: theme.colorScheme.error,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Deletes all your QR links, quota ledger, and authentication account permanently.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: theme.colorScheme.error,
-                      foregroundColor: theme.colorScheme.onError,
-                    ),
-                    onPressed: authVm.isBusy ? null : _confirmAndDeleteAccount,
-                    icon: authVm.isBusy
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.delete_forever_rounded),
-                    label: const Text('Delete My Account & All Data'),
-                  ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
         );
       },
