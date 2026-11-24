@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kursorqr/services/qr_render_service.dart';
+import 'package:kursorqr/viewmodels/landing_viewmodel.dart';
 import 'package:kursorqr/views/dialogs/confirm_danger_dialog.dart';
+import 'package:kursorqr/views/landing/gdpr_floating_banner.dart';
 import 'package:kursorqr/widgets/clay/clay.dart';
+import 'package:provider/provider.dart';
 
 Widget _wrapReducedMotion(Widget child) {
   return MaterialApp(
@@ -124,5 +128,56 @@ void main() {
     await tester.tap(find.text('Delete'));
     await tester.pumpAndSettle();
     expect(result, isTrue);
+  });
+
+  testWidgets('GdprFloatingBanner dismisses via LandingViewModel with motion enabled',
+      (tester) async {
+    tester.view.physicalSize = const Size(773, 785);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final landingVm = LandingViewModel(renderService: QrRenderService());
+    addTearDown(landingVm.dispose);
+    var policyOpened = false;
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<LandingViewModel>.value(
+        value: landingVm,
+        child: MaterialApp(
+          home: ClayMotionScope(
+            motion: const ClayMotion(enabled: true),
+            child: Scaffold(
+              body: Stack(
+                children: [
+                  const SizedBox.expand(),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: Selector<LandingViewModel, bool>(
+                      selector: (_, vm) => vm.showGdprBanner,
+                      builder: (_, visible, __) => GdprFloatingBanner(
+                        visible: visible,
+                        onOpenPolicy: () => policyOpened = true,
+                        onDismiss: landingVm.dismissGdprBanner,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Privacy & cookies'));
+    await tester.pumpAndSettle();
+    expect(policyOpened, isTrue);
+
+    await tester.tap(find.text('Got it'));
+    await tester.pumpAndSettle();
+    expect(landingVm.showGdprBanner, isFalse);
+    expect(find.text('Got it'), findsNothing);
   });
 }

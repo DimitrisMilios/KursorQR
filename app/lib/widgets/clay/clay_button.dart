@@ -226,25 +226,32 @@ class ClayButton extends StatelessWidget {
       ],
     );
 
-    return Opacity(
-      opacity: enabled || busy ? 1 : 0.55,
-      child: ClayPressable(
-        onTap: enabled ? onPressed : null,
-        enabled: enabled,
-        surfaceRipple: ripple,
-        child: row,
-        builder: (context, hover, press, child) {
-          final rippleTime = ripple ? JellyRipple.of(context) : -1.0;
-          return Transform.scale(
-            scale: 1 + 0.02 * hover.clamp(0, 1) - 0.04 * press.clamp(0, 1),
-            child: Container(
-              height: _height,
-              padding: _padding,
-              decoration: _decoration(hover, press.clamp(0, 1), rippleTime),
-              child: child,
-            ),
-          );
-        },
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: busy ? (busyLabel ?? label) : label,
+      onTap: enabled ? onPressed : null,
+      excludeSemantics: true,
+      child: Opacity(
+        opacity: enabled || busy ? 1 : 0.55,
+        child: ClayPressable(
+          onTap: enabled ? onPressed : null,
+          enabled: enabled,
+          surfaceRipple: ripple,
+          child: row,
+          builder: (context, hover, press, child) {
+            final rippleTime = ripple ? JellyRipple.of(context) : -1.0;
+            return Transform.scale(
+              scale: 1 + 0.02 * hover.clamp(0, 1) - 0.04 * press.clamp(0, 1),
+              child: Container(
+                height: _height,
+                padding: _padding,
+                decoration: _decoration(hover, press.clamp(0, 1), rippleTime),
+                child: child,
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -279,51 +286,58 @@ class ClayTextButton extends StatelessWidget {
     final fontSize =
         size == ClayButtonSize.compact ? AppDimensions.fontSm : AppDimensions.fontMd;
     final height = size == ClayButtonSize.compact ? 32.0 : 40.0;
-    return Opacity(
-      opacity: enabled ? 1 : 0.5,
-      child: ClayPressable(
-        onTap: onPressed,
-        enabled: enabled,
-        squash: 0.06,
-        builder: (context, hover, press, _) {
-          final h = hover.clamp(0.0, 1.0);
-          final fg = Color.lerp(
-            base,
-            danger ? AppColors.coral : AppColors.primary,
-            h,
-          )!;
-          return Container(
-            height: height,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(height / 2),
-              color: (danger ? AppColors.coral : AppColors.mint)
-                  .withValues(alpha: 0.35 * h),
-            ),
-            child: Row(
-              mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (icon != null) ...[
-                  Icon(icon, size: 16, color: fg),
-                  const SizedBox(width: 6),
-                ],
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: fg,
-                      fontSize: fontSize,
-                      fontWeight: FontWeight.w700,
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: label,
+      onTap: enabled ? onPressed : null,
+      excludeSemantics: true,
+      child: Opacity(
+        opacity: enabled ? 1 : 0.5,
+        child: ClayPressable(
+          onTap: onPressed,
+          enabled: enabled,
+          squash: 0.06,
+          builder: (context, hover, press, _) {
+            final h = hover.clamp(0.0, 1.0);
+            final fg = Color.lerp(
+              base,
+              danger ? AppColors.coral : AppColors.primary,
+              h,
+            )!;
+            return Container(
+              height: height,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(height / 2),
+                color: (danger ? AppColors.coral : AppColors.mint)
+                    .withValues(alpha: 0.35 * h),
+              ),
+              child: Row(
+                mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (icon != null) ...[
+                    Icon(icon, size: 16, color: fg),
+                    const SizedBox(width: 6),
+                  ],
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: fg,
+                        fontSize: fontSize,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          );
-        },
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
