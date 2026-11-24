@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../widgets/shared/brand_icons.dart';
+
 /// Represents a built-in center icon option rendered cleanly inside QR codes.
 @immutable
 class QrCenterIconOption {
@@ -7,11 +9,30 @@ class QrCenterIconOption {
     required this.id,
     required this.label,
     required this.icon,
+    this.brandIcon,
   });
 
   final String id;
   final String label;
   final IconData icon;
+  final BrandIconKind? brandIcon;
+
+  /// Builds the visual glyph for UI controls (chips, cards, studio tiles).
+  Widget buildGlyph({
+    double size = 16,
+    required Color color,
+    bool multicolorBrand = false,
+  }) {
+    if (brandIcon != null) {
+      return BrandVectorIcon(
+        brandIcon!,
+        size: size,
+        color: color,
+        multicolor: multicolorBrand,
+      );
+    }
+    return Icon(icon, size: size, color: color);
+  }
 }
 
 /// Curated set of 16 crisp vector center icons (zero external assets, 100% offline/GDPR).
@@ -21,13 +42,15 @@ class QrIconCatalog {
   static const List<QrCenterIconOption> all = [
     QrCenterIconOption(
       id: 'app_store',
-      label: 'iOS / App',
+      label: 'Apple / iOS',
       icon: Icons.phone_iphone_rounded,
+      brandIcon: BrandIconKind.apple,
     ),
     QrCenterIconOption(
       id: 'android',
-      label: 'Android',
+      label: 'Google Play',
       icon: Icons.android_rounded,
+      brandIcon: BrandIconKind.googlePlay,
     ),
     QrCenterIconOption(
       id: 'download',

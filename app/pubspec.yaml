@@ -17,6 +17,11 @@ dependencies:
   # Customizable QR code rendering & high-res PNG export
   pretty_qr_code: ^3.3.0
 
+  # Claymorphism typography, MVVM state binding, and declarative motion
+  google_fonts: ^6.2.1
+  provider: ^6.1.2
+  flutter_animate: ^4.5.0
+
   # Modern WASM-safe browser interop for one-click PNG download on Flutter Web
   web: ^1.1.0
 
@@ -27,3 +32,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/clay/

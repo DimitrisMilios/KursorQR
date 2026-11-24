@@ -121,12 +121,14 @@ jobs:
             console.log(`Bumped app/pubspec.yaml version to ${fullVersion}`);
           '
 
-      - name: Build Flutter Web production bundle
-        working-directory: app
+      - name: Build & fingerprint Flutter Web production bundle
         run: |
+          cd app
           flutter build web --release \
             --build-name=${{ steps.bump.outputs.semver }} \
             --build-number=${{ steps.bump.outputs.build }}
+          cd ..
+          node tools/fingerprint_web.mjs app/build/web
 
       - name: Verify Firebase Service Account secret is configured
         env:

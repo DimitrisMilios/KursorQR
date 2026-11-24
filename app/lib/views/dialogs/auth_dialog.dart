@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 
+import '../../core/app_config.dart';
+import '../../core/constants/app_colors.dart';
+import '../../core/constants/app_dimensions.dart';
+import '../../viewmodels/auth_form_viewmodel.dart';
 import '../../viewmodels/auth_viewmodel.dart';
+import '../../widgets/clay/clay.dart';
+import '../../widgets/shared/brand_icons.dart';
+import '../../widgets/shared/brand_logo.dart';
 import 'gdpr_policy_dialog.dart';
 
-/// Public Sign-In & Free Account Registration modal (Google + Email/Password).
+/// Claymorphism Sign-In & Free Account modal strictly bound to [AuthFormViewModel].
 class AuthDialog extends StatefulWidget {
   const AuthDialog({
     super.key,
@@ -19,278 +26,207 @@ class AuthDialog extends StatefulWidget {
 }
 
 class _AuthDialogState extends State<AuthDialog> {
-  final _formKey = GlobalKey<FormState>();
+  late final AuthFormViewModel _formVm;
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-
-  late bool _isSignUp;
-  bool _obscurePassword = true;
 
   @override
   void initState() {
     super.initState();
-    _isSignUp = widget.initialIsSignUp;
-    widget.authViewModel.clearMessages();
+    _formVm = AuthFormViewModel(
+      authViewModel: widget.authViewModel,
+      initialIsSignUp: widget.initialIsSignUp,
+    );
   }
 
   @override
   void dispose() {
+    _formVm.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
   Future<void> _onGoogle() async {
-    final ok = await widget.authViewModel.signInWithGoogle();
+    final ok = await _formVm.submitGoogle();
     if (ok && mounted) Navigator.of(context).pop();
   }
 
   Future<void> _onEmailSubmit() async {
-    if (!_formKey.currentState!.validate()) return;
-    final ok = _isSignUp
-        ? await widget.authViewModel.signUpWithEmail(
-            email: _emailController.text,
-            password: _passwordController.text,
-          )
-        : await widget.authViewModel.signInWithEmail(
-            email: _emailController.text,
-            password: _passwordController.text,
-          );
+    final ok = await _formVm.submitEmail();
     if (ok && mounted) Navigator.of(context).pop();
-  }
-
-  Future<void> _onForgotPassword() async {
-    final email = _emailController.text.trim();
-    if (email.isEmpty || !email.contains('@')) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(
-            content: Text('Enter your email address first to reset your password.'),
-          ),
-        );
-      return;
-    }
-    await widget.authViewModel.sendPasswordReset(email);
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final vm = widget.authViewModel;
-
     return ListenableBuilder(
-      listenable: vm,
+      listenable: Listenable.merge([widget.authViewModel, _formVm]),
       builder: (context, _) {
-        return AlertDialog(
-          titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-          contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-          title: Row(
+        return ClayDialog(
+          width: 450,
+          title: _formVm.isSignUp
+              ? 'Create free account'
+              : 'Sign in to KursorQR',
+          subtitle: _formVm.isSignUp
+              ? 'Includes ${AppConfig.maxQrLinksPerAccount} free dynamic QR links.'
+              : 'Welcome back to your workspace.',
+          headerIcon: const BrandLogo(size: 36, radius: 10, hero: false),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  Icons.qr_code_2_rounded,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  _isSignUp ? 'Create Free Account' : 'Sign In to KursorQR',
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-              IconButton(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.close_rounded),
-              ),
-            ],
-          ),
-          content: SizedBox(
-            width: 410,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SegmentedButton<bool>(
-                    segments: const [
-                      ButtonSegment(value: false, label: Text('Sign In')),
-                      ButtonSegment(value: true, label: Text('Create Account')),
-                    ],
-                    selected: {_isSignUp},
-                    onSelectionChanged: (sel) {
-                      setState(() => _isSignUp = sel.first);
-                      vm.clearMessages();
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  if (vm.errorMessage != null) ...[
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      margin: const EdgeInsets.only(bottom: 14),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.errorContainer,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        vm.errorMessage!,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: theme.colorScheme.onErrorContainer,
-                        ),
-                      ),
-                    ),
-                  ],
-                  if (vm.infoMessage != null) ...[
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      margin: const EdgeInsets.only(bottom: 14),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade50,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.green.shade200),
-                      ),
-                      child: Text(
-                        vm.infoMessage!,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.green.shade900,
-                        ),
-                      ),
-                    ),
-                  ],
-                  FilledButton.icon(
-                    onPressed: vm.isBusy ? null : _onGoogle,
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    icon: const Icon(Icons.login_rounded),
-                    label: const Text('Continue with Google (Instant)'),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      const Expanded(child: Divider()),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Text(
-                          'or with email',
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                      const Expanded(child: Divider()),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        TextFormField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          autofillHints: const [AutofillHints.email],
-                          decoration: const InputDecoration(
-                            labelText: 'Email',
-                            prefixIcon: Icon(Icons.mail_outline_rounded),
-                          ),
-                          validator: (v) {
-                            final trimmed = v?.trim() ?? '';
-                            if (trimmed.isEmpty || !trimmed.contains('@')) {
-                              return 'Enter a valid email address';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _passwordController,
-                          obscureText: _obscurePassword,
-                          autofillHints: _isSignUp
-                              ? const [AutofillHints.newPassword]
-                              : const [AutofillHints.password],
-                          onFieldSubmitted: (_) => _onEmailSubmit(),
-                          decoration: InputDecoration(
-                            labelText: 'Password',
-                            prefixIcon: const Icon(Icons.lock_outline_rounded),
-                            suffixIcon: IconButton(
-                              onPressed: () => setState(
-                                () => _obscurePassword = !_obscurePassword,
-                              ),
-                              icon: Icon(
-                                _obscurePassword
-                                    ? Icons.visibility_outlined
-                                    : Icons.visibility_off_outlined,
-                              ),
-                            ),
-                          ),
-                          validator: (v) {
-                            if (v == null || v.isEmpty) {
-                              return 'Enter your password';
-                            }
-                            if (_isSignUp && v.length < 6) {
-                              return 'Password must be at least 6 characters';
-                            }
-                            return null;
-                          },
-                        ),
-                        if (_isSignUp) ...[
-                          const SizedBox(height: 10),
-                          Text(
-                            'Email sign-ups receive a quick verification link to prevent bot abuse on the free plan. Each free account includes up to 10 dynamic QR codes.',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                        ] else
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton(
-                              onPressed: vm.isBusy ? null : _onForgotPassword,
-                              child: const Text('Forgot password?'),
-                            ),
-                          ),
-                        OutlinedButton(
-                          onPressed: vm.isBusy ? null : _onEmailSubmit,
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                          child: vm.isBusy
-                              ? const SizedBox(
-                                  height: 18,
-                                  width: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : Text(_isSignUp ? 'Create Free Account' : 'Sign In'),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Center(
-                    child: TextButton.icon(
-                      onPressed: () => showDialog<void>(
-                        context: context,
-                        builder: (_) => const GdprPolicyDialog(),
-                      ),
-                      icon: const Icon(Icons.shield_outlined, size: 16),
-                      label: const Text('GDPR Privacy & Cookie Disclosure'),
-                    ),
-                  ),
+              ClaySegmented<bool>(
+                expand: true,
+                selected: _formVm.isSignUp,
+                puckColor: AppColors.gold,
+                selectedForeground: AppColors.textPrimary,
+                onChanged: _formVm.setSignUpMode,
+                segments: const [
+                  ClaySegment(value: false, label: 'Sign in'),
+                  ClaySegment(value: true, label: 'Create account'),
                 ],
               ),
-            ),
+              const SizedBox(height: 18),
+              if (_formVm.errorMessage != null) ...[
+                ClayWell.coral(
+                  padding: const EdgeInsets.all(14),
+                  child: Text(
+                    _formVm.errorMessage!,
+                    style: const TextStyle(
+                      fontSize: AppDimensions.fontBody,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.coralDeep,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+              ],
+              if (_formVm.infoMessage != null) ...[
+                ClayWell.mint(
+                  padding: const EdgeInsets.all(14),
+                  child: Text(
+                    _formVm.infoMessage!,
+                    style: const TextStyle(
+                      fontSize: AppDimensions.fontBody,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryDeep,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+              ],
+              ClayButton.gold(
+                label: 'Continue with Google',
+                leading: Container(
+                  width: 24,
+                  height: 24,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const BrandVectorIcon(
+                    BrandIconKind.googleG,
+                    size: 16,
+                    multicolor: true,
+                  ),
+                ),
+                expand: true,
+                busy: _formVm.isBusy,
+                onPressed: _formVm.isBusy ? null : _onGoogle,
+              ),
+              const SizedBox(height: 18),
+              const Center(
+                child: ClayLabel('or with email'),
+              ),
+              const SizedBox(height: 14),
+              ClayField(
+                controller: _emailController,
+                label: 'Email',
+                hint: 'you@domain.com',
+                errorText: _formVm.emailError,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                autofillHints: const [AutofillHints.email],
+                onChanged: _formVm.setEmail,
+                prefix: const Icon(
+                  Icons.mail_outline_rounded,
+                  size: 18,
+                  color: AppColors.textMuted,
+                ),
+              ),
+              const SizedBox(height: 14),
+              ClayField(
+                controller: _passwordController,
+                label: 'Password',
+                hint: _formVm.isSignUp ? 'At least 6 characters' : 'Your password',
+                errorText: _formVm.passwordError,
+                obscureText: _formVm.obscurePassword,
+                textInputAction: TextInputAction.done,
+                autofillHints: _formVm.isSignUp
+                    ? const [AutofillHints.newPassword]
+                    : const [AutofillHints.password],
+                onChanged: _formVm.setPassword,
+                onSubmitted: (_) => _onEmailSubmit(),
+                prefix: const Icon(
+                  Icons.lock_outline_rounded,
+                  size: 18,
+                  color: AppColors.textMuted,
+                ),
+                suffix: ClayIconButton(
+                  icon: _formVm.obscurePassword
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                  flat: true,
+                  size: 32,
+                  iconSize: 18,
+                  onPressed: _formVm.togglePasswordVisibility,
+                ),
+              ),
+              if (_formVm.isSignUp) ...[
+                const SizedBox(height: 12),
+                const Text(
+                  'Email sign-ups receive a quick verification link to prevent bot abuse on the free tier.',
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: AppDimensions.fontSm,
+                    fontWeight: FontWeight.w600,
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 18),
+              ] else ...[
+                const SizedBox(height: 6),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: ClayButton.text(
+                    label: 'Forgot password?',
+                    size: ClayButtonSize.compact,
+                    onPressed: _formVm.isBusy ? null : _formVm.sendPasswordReset,
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
+              ClayButton.primary(
+                label: _formVm.isSignUp ? 'Create free account' : 'Sign in',
+                busyLabel: 'Please wait...',
+                expand: true,
+                busy: _formVm.isBusy,
+                onPressed: _formVm.isBusy ? null : _onEmailSubmit,
+              ),
+              const SizedBox(height: 14),
+              Center(
+                child: ClayButton.text(
+                  label: 'GDPR privacy & cookie disclosure',
+                  icon: Icons.shield_outlined,
+                  size: ClayButtonSize.compact,
+                  onPressed: () => showClayDialog<void>(
+                    context: context,
+                    builder: (_) => const GdprPolicyDialog(),
+                  ),
+                ),
+              ),
+            ],
           ),
         );
       },

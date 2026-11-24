@@ -124,3 +124,7 @@ app.*.symbols
 
 # Firebase CLI cache
 .firebase/
+
+# Blender scene & backup files (generated locally; contain machine paths)
+*.blend
+*.blend1
