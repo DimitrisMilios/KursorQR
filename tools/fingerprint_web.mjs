@@ -6,7 +6,7 @@
 //   flutter build web --release
 //   node tools/fingerprint_web.mjs [app/build/web]
 import { createHash } from 'node:crypto';
-import { mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 
 const root = process.argv[2] ?? 'app/build/web';
@@ -32,6 +32,9 @@ for (const file of all.map((f) => relative(root, f).replaceAll('\\', '/')).sort(
 }
 const dir = `app/${hash.digest('hex').slice(0, 12)}/`;
 
+// Remove stale fingerprinted bundles from previous local builds so
+// `firebase deploy` never uploads obsolete `app/<old-hash>/` directories.
+await rm(join(root, 'app'), { recursive: true, force: true });
 await mkdir(join(root, dir), { recursive: true });
 for (const name of moved) {
   await rename(join(root, name), join(root, dir, name));

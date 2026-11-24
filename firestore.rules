@@ -99,6 +99,8 @@ service cloud.firestore {
         && data.totalScans == 0
         && data.iosScans == 0
         && data.androidScans == 0
+        && data.createdAt == request.time
+        && data.updatedAt == request.time
         && (!('design' in data) || isValidDesignMap(data.design));
     }
 
@@ -144,6 +146,7 @@ service cloud.firestore {
         && isValidOptionalUrl(data.iosUrl)
         && isValidOptionalUrl(data.androidUrl)
         && data.isActive is bool
+        && data.updatedAt == request.time
         && (!('design' in data) || isValidDesignMap(data.design));
     }
 
@@ -163,7 +166,8 @@ service cloud.firestore {
       let iosDiff = nextIos - prevIos;
       let androidDiff = nextAndroid - prevAndroid;
 
-      return affected.hasOnly(allowedKeys)
+      return resource.data.isActive == true
+        && affected.hasOnly(allowedKeys)
         && affected.hasAll(['totalScans'])
         && prevTotal is int && nextTotal is int
         && prevIos is int && nextIos is int
@@ -186,6 +190,7 @@ service cloud.firestore {
       allow create: if isVerifiedUser()
         && request.auth.uid == uid
         && request.resource.data.keys().hasOnly(['qrSlugs', 'lastMutatedSlug', 'updatedAt'])
+        && request.resource.data.updatedAt == request.time
         && request.resource.data.qrSlugs is list
         && request.resource.data.qrSlugs.size() == 1
         && request.resource.data.lastMutatedSlug is string
@@ -197,6 +202,7 @@ service cloud.firestore {
       allow update: if isSignedIn()
         && request.auth.uid == uid
         && request.resource.data.keys().hasOnly(['qrSlugs', 'lastMutatedSlug', 'updatedAt'])
+        && request.resource.data.updatedAt == request.time
         && request.resource.data.qrSlugs is list
         && request.resource.data.lastMutatedSlug is string
         && (
@@ -242,9 +248,9 @@ service cloud.firestore {
       // Signed-in users can ONLY list their own QR links (`where('ownerId', isEqualTo: uid)`).
       allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
 
-      // Verified users can claim an unused slug while staying within the 10-link quota.
+      // Verified users can claim an unused 3-48 char slug while staying within the 10-link quota.
       allow create: if isVerifiedUser()
-        && slug.matches('^[a-z0-9][a-z0-9_-]{0,63}$')
+        && slug.matches('^[a-z0-9][a-z0-9_-]{2,47}$')
         && isValidQrCreateData()
         && isQuotaBatchValidOnCreate(slug);
 

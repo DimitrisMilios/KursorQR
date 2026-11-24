@@ -47,7 +47,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_vm.hasLoadedOnce) _vm.refresh();
+      if (!_vm.hasLoadedOnce) _vm.refresh(force: true);
     });
   }
 
@@ -140,6 +140,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _copyRedirectUrl(QrLink link) async {
     await _vm.copyRedirectUrl(link);
     if (mounted) ClayToast.show(context, 'Copied ${link.redirectUrl}');
+  }
+
+  Future<void> _handleRefresh() async {
+    final remaining = _vm.refreshCooldownRemainingSeconds;
+    if (_vm.hasLoadedOnce && remaining > 0) {
+      ClayToast.show(
+        context,
+        'Stats updated recently. Wait ${remaining}s before refreshing again.',
+      );
+      return;
+    }
+    await _vm.refresh();
   }
 
   @override
@@ -487,7 +499,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   isQuotaReached: state.$2,
                   maxQuota: _vm.maxQuota,
                   lastRefreshedLabel: state.$3,
-                  onRefresh: _vm.refresh,
+                  onRefresh: _handleRefresh,
                   onCreateLink: _openCreateOrEdit,
                   onOpenAccount: _openAccountSettings,
                   onOpenPrivacy: _openPrivacyPolicy,

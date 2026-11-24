@@ -153,6 +153,13 @@
         return 'other';
       }
 
+      // Skip anonymous scan writes for chat link-preview bots & crawlers
+      // (zero cookies/storage; protects free-tier Firestore write quota).
+      function isAutomatedPreviewBot() {
+        const ua = navigator.userAgent || '';
+        return /bot|crawl|spider|slurp|preview|facebookexternalhit|whatsapp|slack|telegram|discord|twitterbot|linkedinbot|embedly|quora|pinterest|lighthouse|headlesschrome/i.test(ua);
+      }
+
       function sanitizeTargetUrl(raw) {
         if (typeof raw !== 'string') return '';
         const trimmed = raw.trim();
@@ -271,7 +278,9 @@
             return;
           }
 
-          fireAnonymousIncrement(slug, platform);
+          if (!isAutomatedPreviewBot()) {
+            fireAnonymousIncrement(slug, platform);
+          }
 
           $fallbackLink.href = target;
           $fallbackLink.classList.remove('hidden');

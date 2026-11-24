@@ -18,11 +18,18 @@ class DashboardViewModel extends ChangeNotifier {
     required this.ownerId,
     required this.ownerEmail,
     ClipboardService clipboardService = const ClipboardService(),
+    DateTime Function()? clock,
   })  : _repository = repository,
-        _clipboardService = clipboardService;
+        _clipboardService = clipboardService,
+        _clock = clock ?? DateTime.now;
+
+  /// Minimum interval between manual Firestore refresh calls to protect the
+  /// free Spark Plan daily read quota from accidental rapid-click bursts.
+  static const Duration refreshCooldown = Duration(seconds: 15);
 
   final QrLinkRepository _repository;
   final ClipboardService _clipboardService;
+  final DateTime Function() _clock;
   final String ownerId;
   final String ownerEmail;
 
@@ -80,8 +87,26 @@ class DashboardViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Remaining seconds before the next manual refresh is allowed (`0` when ready).
+  int get refreshCooldownRemainingSeconds {
+    final last = _lastRefreshedAt;
+    if (!_hasLoadedOnce || last == null) return 0;
+    final elapsed = _clock().difference(last);
+    if (elapsed >= refreshCooldown) return 0;
+    final remainingMs = refreshCooldown.inMilliseconds - elapsed.inMilliseconds;
+    return (remainingMs / 1000).ceil().clamp(1, refreshCooldown.inSeconds);
+  }
+
+  bool get canRefresh => !_isLoading && refreshCooldownRemainingSeconds == 0;
+
   /// Loads or refreshes links on demand via a single Spark-friendly `.get()`.
-  Future<void> refresh() async {
+  /// Returns `false` when throttled by the 15-second anti-burst cooldown.
+  Future<bool> refresh({bool force = false}) async {
+    if (_isLoading) return false;
+    if (!force && refreshCooldownRemainingSeconds > 0) {
+      return false;
+    }
+
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -89,9 +114,11 @@ class DashboardViewModel extends ChangeNotifier {
     try {
       _links = await _repository.fetchUserLinks(ownerId);
       _hasLoadedOnce = true;
-      _lastRefreshedAt = DateTime.now();
+      _lastRefreshedAt = _clock();
+      return true;
     } catch (e) {
       _errorMessage = 'Could not load your QR links: $e';
+      return false;
     } finally {
       _isLoading = false;
       notifyListeners();
