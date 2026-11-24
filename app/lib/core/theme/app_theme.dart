@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../constants/app_colors.dart';
 import '../constants/app_dimensions.dart';
+import '../../widgets/clay/clay_decoration.dart';
 
 /// Claymorphism theme factory for KursorQR.
 ///
@@ -111,9 +112,12 @@ class AppTheme {
       ),
       tooltipTheme: TooltipThemeData(
         decoration: tooltipDecoration ??
-            BoxDecoration(
+            const ClayDecoration(
               color: AppColors.clay,
-              borderRadius: BorderRadius.circular(AppDimensions.radiusClaySm),
+              radius: AppDimensions.radiusClaySm,
+              depth: 3,
+              lift: 8,
+              shadowOpacity: 0.18,
             ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         margin: const EdgeInsets.all(8),
