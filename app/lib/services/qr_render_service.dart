@@ -31,9 +31,12 @@ class QrRenderService {
     if (option == null) return null;
 
     final cacheKey =
-        '${option.id}_${design.fgColor.toARGB32()}_${design.fgColorEnd.toARGB32()}_${design.useGradient}_${design.bgColor.toARGB32()}';
-    final cached = _iconBadgeCache[cacheKey];
-    if (cached != null) return cached;
+        '${option.id}_${design.fgColor.toARGB32()}_${design.fgColorEnd.toARGB32()}_${design.useGradient}_${design.gradientDirection.index}_${design.bgColor.toARGB32()}';
+    final cached = _iconBadgeCache.remove(cacheKey);
+    if (cached != null) {
+      _iconBadgeCache[cacheKey] = cached; // refresh LRU recency
+      return cached;
+    }
 
     const int dim = 256;
     const double size = 256.0;
@@ -98,15 +101,16 @@ class QrRenderService {
 
     final picture = recorder.endRecording();
     final image = await picture.toImage(dim, dim);
+    picture.dispose();
     final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
     image.dispose();
 
     if (byteData == null) return null;
     final bytes = byteData.buffer.asUint8List();
 
-    // Keep cache bounded so browser memory stays tiny.
-    if (_iconBadgeCache.length > 48) {
-      _iconBadgeCache.clear();
+    // Bounded LRU cache keeps browser memory tiny.
+    if (_iconBadgeCache.length >= 48) {
+      _iconBadgeCache.remove(_iconBadgeCache.keys.first);
     }
     _iconBadgeCache[cacheKey] = bytes;
     return bytes;

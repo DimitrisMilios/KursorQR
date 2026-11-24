@@ -22,4 +22,5 @@ export 'clay_segmented.dart';
 export 'clay_tile.dart';
 export 'clay_toast.dart';
 export 'clay_toggle.dart';
+export 'clay_well.dart';
 export 'jelly_transform.dart';
