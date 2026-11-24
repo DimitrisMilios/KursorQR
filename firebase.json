@@ -38,6 +38,15 @@
         ]
       },
       {
+        "source": "/canvaskit/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
         "source": "/@(index.html|flutter_bootstrap.js|flutter_service_worker.js|flutter.js|version.json|manifest.json)",
         "headers": [
           {
@@ -77,7 +86,7 @@
           },
           {
             "key": "Cache-Control",
-            "value": "public, max-age=300"
+            "value": "public, max-age=3600"
           }
         ]
       }

@@ -62,8 +62,8 @@ class QrLinkFormViewModel extends ChangeNotifier {
   static String? validateSlug(String raw) {
     final normalized = raw.trim().toLowerCase();
     if (normalized.isEmpty) return 'Slug is required';
-    if (!RegExp(r'^[a-z0-9][a-z0-9_-]{0,63}$').hasMatch(normalized)) {
-      return 'Use 1-64 chars: lowercase a-z, 0-9, "-" or "_"';
+    if (!RegExp(r'^[a-z0-9][a-z0-9_-]{2,47}$').hasMatch(normalized)) {
+      return 'Use 3-48 chars: lowercase a-z, 0-9, "-" or "_"';
     }
     return null;
   }
