@@ -1,11 +1,15 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 
+import '../../core/constants/app_colors.dart';
+import '../../core/constants/app_dimensions.dart';
 import '../../models/qr_link.dart';
 import '../../viewmodels/dashboard_viewmodel.dart';
+import '../../viewmodels/qr_link_form_viewmodel.dart';
+import '../../widgets/clay/clay.dart';
+import '../../widgets/shared/clay_asset_icon.dart';
 
-/// Modal form to create or edit a dynamic QR link (delegates writes to DashboardViewModel).
+/// Claymorphism modal form to create or edit a dynamic QR link, strictly bound
+/// to [QrLinkFormViewModel].
 class QrLinkFormDialog extends StatefulWidget {
   const QrLinkFormDialog({
     super.key,
@@ -21,41 +25,30 @@ class QrLinkFormDialog extends StatefulWidget {
 }
 
 class _QrLinkFormDialogState extends State<QrLinkFormDialog> {
-  final _formKey = GlobalKey<FormState>();
+  late final QrLinkFormViewModel _vm;
   late final TextEditingController _slugController;
   late final TextEditingController _titleController;
   late final TextEditingController _webUrlController;
   late final TextEditingController _iosUrlController;
   late final TextEditingController _androidUrlController;
 
-  late bool _isActive;
-  bool _isSaving = false;
-  String? _errorText;
-
-  bool get _isEditing => widget.existing != null;
-
-  static String _generateRandomSlug() {
-    const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
-    final rng = Random.secure();
-    return List.generate(7, (_) => chars[rng.nextInt(chars.length)]).join();
-  }
-
   @override
   void initState() {
     super.initState();
-    final existing = widget.existing;
-    _slugController = TextEditingController(
-      text: existing?.slug ?? _generateRandomSlug(),
+    _vm = QrLinkFormViewModel(
+      dashboardViewModel: widget.dashboardViewModel,
+      existing: widget.existing,
     );
-    _titleController = TextEditingController(text: existing?.title ?? '');
-    _webUrlController = TextEditingController(text: existing?.webUrl ?? '');
-    _iosUrlController = TextEditingController(text: existing?.iosUrl ?? '');
-    _androidUrlController = TextEditingController(text: existing?.androidUrl ?? '');
-    _isActive = existing?.isActive ?? true;
+    _slugController = TextEditingController(text: _vm.slug);
+    _titleController = TextEditingController(text: _vm.title);
+    _webUrlController = TextEditingController(text: _vm.webUrl);
+    _iosUrlController = TextEditingController(text: _vm.iosUrl);
+    _androidUrlController = TextEditingController(text: _vm.androidUrl);
   }
 
   @override
   void dispose() {
+    _vm.dispose();
     _slugController.dispose();
     _titleController.dispose();
     _webUrlController.dispose();
@@ -64,211 +57,152 @@ class _QrLinkFormDialogState extends State<QrLinkFormDialog> {
     super.dispose();
   }
 
-  String? _validateRequiredUrl(String? raw) {
-    final trimmed = raw?.trim() ?? '';
-    if (trimmed.isEmpty) return 'Fallback Web URL is required';
-    if (!RegExp(r'^https?:\/\/.+', caseSensitive: false).hasMatch(trimmed)) {
-      return 'Must start with https:// or http://';
-    }
-    if (trimmed.length > 2048) return 'URL is too long (max 2048 characters)';
-    return null;
-  }
-
-  String? _validateOptionalStoreUrl(String? raw) {
-    final trimmed = raw?.trim() ?? '';
-    if (trimmed.isEmpty) return null;
-    if (!RegExp(
-      r'^(https?:\/\/|itms-apps:\/\/|market:\/\/).+',
-      caseSensitive: false,
-    ).hasMatch(trimmed)) {
-      return 'Must start with https://, http://, itms-apps://, or market://';
-    }
-    if (trimmed.length > 2048) return 'URL is too long (max 2048 characters)';
-    return null;
+  void _shuffleSlug() {
+    final next = _vm.regenerateSlug();
+    _slugController.text = next;
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() {
-      _isSaving = true;
-      _errorText = null;
-    });
-
-    final slug = _slugController.text.trim().toLowerCase();
-
-    try {
-      if (_isEditing) {
-        await widget.dashboardViewModel.updateLink(
-          slug: slug,
-          title: _titleController.text,
-          webUrl: _webUrlController.text,
-          iosUrl: _iosUrlController.text,
-          androidUrl: _androidUrlController.text,
-          isActive: _isActive,
-        );
-      } else {
-        await widget.dashboardViewModel.createLink(
-          slug: slug,
-          title: _titleController.text,
-          webUrl: _webUrlController.text,
-          iosUrl: _iosUrlController.text,
-          androidUrl: _androidUrlController.text,
-          isActive: _isActive,
-        );
-      }
-
-      if (mounted) Navigator.of(context).pop(slug);
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorText = e.toString();
-          _isSaving = false;
-        });
-      }
+    final savedSlug = await _vm.submit();
+    if (savedSlug != null && mounted) {
+      Navigator.of(context).pop(savedSlug);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(_isEditing ? 'Edit Dynamic QR Link' : 'Create Dynamic QR Link'),
-      content: SizedBox(
-        width: 520,
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (_errorText != null) ...[
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    margin: const EdgeInsets.only(bottom: 14),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.errorContainer,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      _errorText!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onErrorContainer,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                ],
-                TextFormField(
-                  controller: _slugController,
-                  enabled: !_isEditing,
-                  decoration: InputDecoration(
-                    labelText: 'Short Link Slug',
-                    hintText: 'e.g. my-app',
-                    prefixText: 'kursorqr.web.app/r/',
-                    suffixIcon: _isEditing
-                        ? null
-                        : IconButton(
-                            tooltip: 'Generate random unique slug',
-                            onPressed: () => setState(
-                              () => _slugController.text = _generateRandomSlug(),
-                            ),
-                            icon: const Icon(Icons.shuffle_rounded),
-                          ),
-                    helperText: _isEditing
-                        ? 'Short link path is permanent so printed QR codes never break.'
-                        : 'Lowercase a-z, 0-9, "-" or "_" (1–64 chars).',
-                  ),
-                  validator: (value) {
-                    final slug = value?.trim().toLowerCase() ?? '';
-                    if (slug.isEmpty) return 'Slug is required';
-                    if (!RegExp(r'^[a-z0-9][a-z0-9_-]{0,63}$').hasMatch(slug)) {
-                      return 'Use 1–64 chars: lowercase a-z, 0-9, "-" or "_"';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 14),
-                TextFormField(
-                  controller: _titleController,
-                  maxLength: 120,
-                  decoration: const InputDecoration(
-                    labelText: 'Campaign / Link Name',
-                    hintText: 'e.g. App Store Launch Poster',
-                    counterText: '',
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Enter a display name';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 14),
-                TextFormField(
-                  controller: _webUrlController,
-                  keyboardType: TextInputType.url,
-                  decoration: const InputDecoration(
-                    labelText: 'Fallback Web URL (Required)',
-                    hintText: 'https://yourdomain.com/download',
-                    prefixIcon: Icon(Icons.language_rounded),
-                  ),
-                  validator: _validateRequiredUrl,
-                ),
-                const SizedBox(height: 14),
-                TextFormField(
-                  controller: _iosUrlController,
-                  keyboardType: TextInputType.url,
-                  decoration: const InputDecoration(
-                    labelText: 'iOS App Store URL (Optional)',
-                    hintText: 'https://apps.apple.com/app/id000000000',
-                    prefixIcon: Icon(Icons.phone_iphone_rounded),
-                  ),
-                  validator: _validateOptionalStoreUrl,
-                ),
-                const SizedBox(height: 14),
-                TextFormField(
-                  controller: _androidUrlController,
-                  keyboardType: TextInputType.url,
-                  decoration: const InputDecoration(
-                    labelText: 'Android Play Store URL (Optional)',
-                    hintText:
-                        'https://play.google.com/store/apps/details?id=com.example.app',
-                    prefixIcon: Icon(Icons.android_rounded),
-                  ),
-                  validator: _validateOptionalStoreUrl,
-                ),
-                const SizedBox(height: 10),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Active'),
-                  subtitle: const Text(
-                    'Turn off to pause redirection without deleting your QR code.',
-                  ),
-                  value: _isActive,
-                  onChanged: (value) => setState(() => _isActive = value),
-                ),
-              ],
-            ),
+    return ListenableBuilder(
+      listenable: _vm,
+      builder: (context, _) {
+        return ClayDialog(
+          width: 540,
+          title: _vm.isEditing ? 'Edit dynamic QR link' : 'New dynamic QR link',
+          subtitle: _vm.isEditing
+              ? 'Update destinations anytime without reprinting.'
+              : 'Set a short slug and optional store redirects.',
+          headerIcon: const ClayAssetIcon(
+            asset: 'assets/clay/icon_link.png',
+            fallbackIcon: Icons.link_rounded,
+            size: 32,
           ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: _isSaving ? null : _save,
-          child: _isSaving
-              ? const SizedBox(
-                  height: 16,
-                  width: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(_isEditing ? 'Save Changes' : 'Create Link'),
-        ),
-      ],
+          actions: [
+            ClayButton.text(
+              label: 'Cancel',
+              onPressed: _vm.isSaving ? null : () => Navigator.of(context).pop(),
+            ),
+            ClayButton.primary(
+              label: _vm.isEditing ? 'Save changes' : 'Create link',
+              busyLabel: 'Saving...',
+              busy: _vm.isSaving,
+              onPressed: _vm.isSaving ? null : _save,
+            ),
+          ],
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (_vm.submitError != null) ...[
+                ClayWell.coral(
+                  padding: const EdgeInsets.all(14),
+                  child: Text(
+                    _vm.submitError!,
+                    style: const TextStyle(
+                      color: AppColors.coralDeep,
+                      fontSize: AppDimensions.fontBody,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+              ClayField(
+                controller: _slugController,
+                enabled: !_vm.isEditing,
+                label: 'Short link slug',
+                hint: 'my-app',
+                prefixText: 'kursorqr.web.app/r/',
+                monospace: true,
+                errorText: _vm.slugError,
+                helperText: _vm.isEditing
+                    ? 'Slug is permanent so printed QR codes never break.'
+                    : 'Lowercase a-z, 0-9, "-" or "_" (1-64 chars).',
+                onChanged: _vm.setSlug,
+                suffix: _vm.isEditing
+                    ? null
+                    : ClayIconButton(
+                        icon: Icons.shuffle_rounded,
+                        tooltip: 'Generate random slug',
+                        flat: true,
+                        size: 32,
+                        iconSize: 18,
+                        onPressed: _shuffleSlug,
+                      ),
+              ),
+              const SizedBox(height: 16),
+              ClayField(
+                controller: _titleController,
+                label: 'Campaign / link name',
+                hint: 'App Store launch poster',
+                maxLength: 120,
+                errorText: _vm.titleError,
+                onChanged: _vm.setTitle,
+              ),
+              const SizedBox(height: 16),
+              ClayField(
+                controller: _webUrlController,
+                label: 'Fallback web URL (required)',
+                hint: 'https://yourdomain.com/download',
+                keyboardType: TextInputType.url,
+                errorText: _vm.webUrlError,
+                onChanged: _vm.setWebUrl,
+                prefix: const Icon(
+                  Icons.language_rounded,
+                  size: 18,
+                  color: AppColors.textMuted,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ClayField(
+                controller: _iosUrlController,
+                label: 'iOS App Store URL (optional)',
+                hint: 'https://apps.apple.com/app/id000000000',
+                keyboardType: TextInputType.url,
+                errorText: _vm.iosUrlError,
+                onChanged: _vm.setIosUrl,
+                prefix: const Icon(
+                  Icons.phone_iphone_rounded,
+                  size: 18,
+                  color: AppColors.textMuted,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ClayField(
+                controller: _androidUrlController,
+                label: 'Android Play Store URL (optional)',
+                hint: 'https://play.google.com/store/apps/details?id=com.example.app',
+                keyboardType: TextInputType.url,
+                errorText: _vm.androidUrlError,
+                onChanged: _vm.setAndroidUrl,
+                prefix: const Icon(
+                  Icons.android_rounded,
+                  size: 18,
+                  color: AppColors.textMuted,
+                ),
+              ),
+              const SizedBox(height: 18),
+              ClayWell(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: ClayToggle(
+                  value: _vm.isActive,
+                  label: 'Active',
+                  subtitle: 'Turn off to pause redirects without deleting the QR.',
+                  onChanged: _vm.setActive,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
